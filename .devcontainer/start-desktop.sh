@@ -1,14 +1,21 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Generate a fresh password for each container start. TigerVNC uses the first
-# eight characters, so generate exactly eight random hexadecimal characters.
-VNC_PASSWORD="$(od -An -N4 -tx1 /dev/urandom | tr -d ' \n')"
-printf '%s\n' "$VNC_PASSWORD" > "$HOME/.vnc/password"
-chmod 600 "$HOME/.vnc/password"
-printf '%s\n%s\n' "$VNC_PASSWORD" "$VNC_PASSWORD" | vncpasswd "$HOME/.vnc/passwd" >/dev/null
-chmod 600 "$HOME/.vnc/passwd"
-unset VNC_PASSWORD
+# Prefer the repository-scoped Codespaces secret when present. Traditional
+# TigerVNC authentication uses only the first eight characters.
+if [[ -n "${VNC_PASSWORD:-}" ]]; then
+  AUTH_PASSWORD="${VNC_PASSWORD:0:8}"
+else
+  # Six bytes of /dev/urandom become eight base64 characters (48 random bits).
+  AUTH_PASSWORD="$(head -c 6 /dev/urandom | base64 | tr -d '\n')"
+fi
+
+mkdir -p "$HOME/.vnc"
+umask 077
+printf '%s\n' "$AUTH_PASSWORD" > "$HOME/.vnc/password"
+printf '%s\n%s\n' "$AUTH_PASSWORD" "$AUTH_PASSWORD" | vncpasswd "$HOME/.vnc/passwd" >/dev/null
+chmod 600 "$HOME/.vnc/password" "$HOME/.vnc/passwd"
+unset VNC_PASSWORD AUTH_PASSWORD
 
 # Avoid stale display locks if a prior startup was interrupted.
 rm -f /tmp/.X1-lock /tmp/.X11-unix/X1
@@ -29,7 +36,7 @@ for _ in $(seq 1 30); do
     exit 1
   fi
   if curl --silent --fail http://127.0.0.1:6080/vnc.html >/dev/null; then
-    echo "noVNC is available on port 6080. Read the generated VNC password from ~/.vnc/password."
+    echo "noVNC is available on port 6080. Read the VNC password from ~/.vnc/password."
     echo DESKTOP_READY
     exit 0
   fi
