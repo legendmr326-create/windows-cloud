@@ -5,7 +5,7 @@ sudo apt-get update
 sudo DEBIAN_FRONTEND=noninteractive apt-get install -y \
   -o Dpkg::Options::=--force-confold \
   xfce4 xfce4-terminal dbus-x11 tigervnc-standalone-server tigervnc-common \
-  novnc websockify wget ca-certificates xz-utils curl
+  xvfb x11vnc x11-utils novnc websockify wget ca-certificates xz-utils curl
 
 # Install Mozilla's current Firefox build instead of Ubuntu's snap-only wrapper.
 if ! command -v firefox >/dev/null 2>&1 || ! firefox --version >/dev/null 2>&1; then
